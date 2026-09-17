@@ -77,8 +77,23 @@ const state = {
 };
 
 // ==========================================
-// INITIALIZATION
+// LOCAL PERSISTENCE & INITIALIZATION
 // ==========================================
+function saveStateToLocalStorage() {
+    try {
+        localStorage.setItem('aj_products', JSON.stringify(state.products));
+        localStorage.setItem('aj_categories', JSON.stringify(state.categories));
+        localStorage.setItem('aj_rates', JSON.stringify(state.rates));
+        localStorage.setItem('aj_cipher', JSON.stringify(state.cipher));
+        localStorage.setItem('aj_firebase_url', state.firebaseUrl || '');
+        localStorage.setItem('aj_cloudinary_name', state.cloudinaryName || '');
+        localStorage.setItem('aj_cloudinary_preset', state.cloudinaryPreset || '');
+        localStorage.setItem('aj_whatsapp_number', state.whatsappNumber || '');
+    } catch (e) {
+        console.warn("Failed to save state to localStorage:", e);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     await loadInitialData();
     setupRouting();
@@ -87,6 +102,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadInitialData() {
     try {
+        // 1. First, load from localStorage if previously stored
+        const localProducts = localStorage.getItem('aj_products');
+        const localCategories = localStorage.getItem('aj_categories');
+        const localRates = localStorage.getItem('aj_rates');
+        const localCipher = localStorage.getItem('aj_cipher');
+
+        if (localProducts) {
+            try { state.products = JSON.parse(localProducts); } catch (e) {}
+        }
+        if (localCategories) {
+            try { state.categories = JSON.parse(localCategories); } catch (e) {}
+        }
+        if (localRates) {
+            try { state.rates = JSON.parse(localRates); } catch (e) {}
+        }
+        if (localCipher) {
+            try { state.cipher = JSON.parse(localCipher); } catch (e) {}
+        }
+
+        // 2. Try fetching from local server API
         const [ratesRes, catsRes, prodsRes, settingsRes] = await Promise.all([
             fetch('/api/rates').then(r => r.json()).catch(() => ({ success: false })),
             fetch('/api/categories').then(r => r.json()).catch(() => ({ success: false })),
@@ -108,16 +143,34 @@ async function loadInitialData() {
             if (settingsRes.settings.whatsapp_number) state.whatsappNumber = settingsRes.settings.whatsapp_number;
         }
 
-        // Sync from Firebase Realtime DB if available
+        // 3. Fallback for static Netlify/Vercel hosting if server API not present & no local storage
+        if (!prodsRes.success && (!localProducts || state.products.length === 0)) {
+            try {
+                const staticData = await fetch('/data.json').then(r => r.json()).catch(() => null);
+                if (staticData) {
+                    if (staticData.products && staticData.products.length > 0) state.products = staticData.products;
+                    if (staticData.categories && staticData.categories.length > 0) state.categories = staticData.categories;
+                    if (staticData.rates && staticData.rates.length > 0) state.rates = staticData.rates;
+                    if (staticData.settings && staticData.settings.cipher) {
+                        try { state.cipher = typeof staticData.settings.cipher === 'string' ? JSON.parse(staticData.settings.cipher) : staticData.settings.cipher; } catch(e){}
+                    }
+                }
+            } catch (e) {}
+        }
+
+        // 4. Sync from Firebase Realtime DB if available
         await trySyncFromFirebase();
 
-        // Ensure default data exists if still empty
+        // 5. Ensure default data exists if still empty
         if (!state.rates || state.rates.length === 0) state.rates = [...DEFAULT_RATES];
         if (!state.categories || state.categories.length === 0) state.categories = [...DEFAULT_CATEGORIES];
         if (!state.products || state.products.length === 0) state.products = [...DEFAULT_PRODUCTS];
 
-        // Dynamically recalculate all product prices with current rates everywhere
+        // 6. Dynamically recalculate all product prices with current rates everywhere
         recalculateAllProductsInState();
+
+        // 7. Save current unified state to localStorage
+        saveStateToLocalStorage();
 
         renderAll();
     } catch (err) {
@@ -1407,6 +1460,7 @@ async function handleSaveProduct(e) {
     }
 
     closeModal('product-modal');
+    saveStateToLocalStorage();
     renderAll();
 }
 
@@ -1426,6 +1480,7 @@ async function handleDeleteProduct(prodId) {
         } catch (e) {}
     }
 
+    saveStateToLocalStorage();
     renderAll();
 }
 
@@ -1463,6 +1518,7 @@ async function handleAddCategory(e) {
 
     document.getElementById('new-category-name').value = '';
     closeModal('category-modal');
+    saveStateToLocalStorage();
     renderAll();
 }
 
@@ -1483,6 +1539,7 @@ async function handleDeleteCategory(catId) {
         } catch (e) {}
     }
 
+    saveStateToLocalStorage();
     renderAll();
 }
 
@@ -1536,6 +1593,7 @@ async function handleSaveRates(e) {
     }
 
     closeModal('rates-modal');
+    saveStateToLocalStorage();
     
     // 5. Instantly re-render everywhere
     renderAll();
@@ -1592,6 +1650,7 @@ async function handleSaveCipher(e) {
     }
 
     closeModal('cipher-modal');
+    saveStateToLocalStorage();
     renderAll();
 }
 
@@ -1617,11 +1676,7 @@ async function handleSaveCloudSettings(e) {
     state.cloudinaryKey = cloudinaryKey;
     state.whatsappNumber = whatsappNumber;
 
-    localStorage.setItem('aj_firebase_url', firebaseUrl);
-    localStorage.setItem('aj_cloudinary_name', cloudinaryName);
-    localStorage.setItem('aj_cloudinary_preset', cloudinaryPreset);
-    localStorage.setItem('aj_cloudinary_key', cloudinaryKey);
-    localStorage.setItem('aj_whatsapp_number', whatsappNumber);
+    saveStateToLocalStorage();
 
     try {
         await fetch('/api/settings', {
@@ -1639,7 +1694,67 @@ async function handleSaveCloudSettings(e) {
 
     await syncWithFirebaseNow();
     closeModal('cloud-modal');
-    alert("Cloud settings saved successfully!");
+    alert("Settings saved successfully!");
+}
+
+// ==========================================
+// BACKUP & RESTORE
+// ==========================================
+function exportCatalogueBackup() {
+    const backupData = {
+        exportedAt: new Date().toISOString(),
+        products: state.products,
+        categories: state.categories,
+        rates: state.rates,
+        cipher: state.cipher,
+        settings: {
+            firebase_url: state.firebaseUrl,
+            cloudinary_name: state.cloudinaryName,
+            cloudinary_preset: state.cloudinaryPreset,
+            whatsapp_number: state.whatsappNumber
+        }
+    };
+
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `amrutha-jewellers-backup-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function importCatalogueBackup(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+        try {
+            const data = JSON.parse(evt.target.result);
+            if (data.products && Array.isArray(data.products)) state.products = data.products;
+            if (data.categories && Array.isArray(data.categories)) state.categories = data.categories;
+            if (data.rates && Array.isArray(data.rates)) state.rates = data.rates;
+            if (data.cipher) state.cipher = typeof data.cipher === 'string' ? JSON.parse(data.cipher) : data.cipher;
+            if (data.settings) {
+                if (data.settings.firebase_url) state.firebaseUrl = data.settings.firebase_url;
+                if (data.settings.cloudinary_name) state.cloudinaryName = data.settings.cloudinary_name;
+                if (data.settings.cloudinary_preset) state.cloudinaryPreset = data.settings.cloudinary_preset;
+                if (data.settings.whatsapp_number) state.whatsappNumber = data.settings.whatsapp_number;
+            }
+
+            recalculateAllProductsInState();
+            saveStateToLocalStorage();
+            renderAll();
+            closeModal('cloud-modal');
+            alert("Backup imported successfully! All data has been updated and saved.");
+        } catch (err) {
+            alert("Failed to parse backup file: " + err.message);
+        }
+    };
+    reader.readAsText(file);
 }
 
 // ==========================================
@@ -1653,3 +1768,4 @@ function openModal(id) {
 function closeModal(id) {
     document.getElementById(id).classList.add('hidden');
 }
+

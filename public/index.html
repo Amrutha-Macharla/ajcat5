@@ -580,6 +580,28 @@
                     </p>
                 </div>
 
+                <!-- Backup & Restore Data -->
+                <div class="p-4 bg-purple-50/50 border border-purple-200 rounded-xl space-y-3">
+                    <div class="flex items-center gap-2">
+                        <span class="p-1.5 bg-purple-100 text-purple-800 rounded-lg">
+                            <i data-lucide="hard-drive-download" class="w-4 h-4"></i>
+                        </span>
+                        <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wide">Backup & Export All Data</h4>
+                    </div>
+                    <p class="text-[11px] text-slate-500">
+                        Download your complete products, categories, rates, and cipher as a backup JSON file or restore from a file anytime.
+                    </p>
+                    <div class="flex items-center gap-3">
+                        <button type="button" onclick="exportCatalogueBackup()" class="flex-1 py-2 px-3 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 shadow-sm">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Backup JSON
+                        </button>
+                        <label class="flex-1 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 cursor-pointer border border-slate-300">
+                            <i data-lucide="upload" class="w-3.5 h-3.5"></i> Import Backup
+                            <input type="file" accept=".json" onchange="importCatalogueBackup(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+
                 <!-- WhatsApp Default Number -->
                 <div class="p-3 bg-emerald-50/50 border border-emerald-200 rounded-xl flex items-center justify-between">
                     <div>
@@ -591,7 +613,7 @@
 
                 <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
                     <button type="button" onclick="closeModal('cloud-modal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                    <button type="submit" class="px-5 py-2 text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg shadow-sm">Save Cloud Settings</button>
+                    <button type="submit" class="px-5 py-2 text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg shadow-sm">Save Settings</button>
                 </div>
             </form>
         </div>
