@@ -1,0 +1,201 @@
+{
+  "products": [
+    {
+      "id": "prod_001",
+      "code": "AJ-0001",
+      "category_id": "cat_gold_black_beads",
+      "category_name": "Gold Black Beads",
+      "metal_type": "Gold",
+      "carats": "22k",
+      "item_wt": 2.07,
+      "net_wt": 1.73,
+      "stone_cost": 0.0,
+      "va_percent": 20.0,
+      "mc": 550.0,
+      "manual_mrp": 0.0,
+      "mrp": 44146.0,
+      "price_code": "DDADF",
+      "breakdown_code": "B0 | EE0",
+      "image_url": "/uploads/aj0001.png",
+      "notes": "Classic black beads with gold pipe",
+      "created_at": "2026-08-18 12:02:11"
+    },
+    {
+      "id": "prod_002",
+      "code": "AJ-0002",
+      "category_id": "cat_gold_black_beads",
+      "category_name": "Gold Black Beads",
+      "metal_type": "Gold",
+      "carats": "22k",
+      "item_wt": 2.3,
+      "net_wt": 2.06,
+      "stone_cost": 0.0,
+      "va_percent": 20.0,
+      "mc": 600.0,
+      "manual_mrp": 0.0,
+      "mrp": 52512.0,
+      "price_code": "EBEAB",
+      "breakdown_code": "B0 | F00",
+      "image_url": "/uploads/aj0001.png",
+      "notes": "Lightweight daily wear black beads",
+      "created_at": "2026-08-18 12:02:11"
+    },
+    {
+      "id": "prod_003",
+      "code": "AJ-0003",
+      "category_id": "cat_gold_black_beads",
+      "category_name": "Gold Black Beads",
+      "metal_type": "Gold",
+      "carats": "22k",
+      "item_wt": 3.0,
+      "net_wt": 2.96,
+      "stone_cost": 680.0,
+      "va_percent": 18.0,
+      "mc": 600.0,
+      "manual_mrp": 0.0,
+      "mrp": 74629.0,
+      "price_code": "GDFBI",
+      "breakdown_code": "AH | F00",
+      "image_url": "/uploads/aj0001.png",
+      "notes": "Designer black beads with stones",
+      "created_at": "2026-08-18 12:02:11"
+    },
+    {
+      "id": "prod_msyo9txu",
+      "code": "AJ-0005",
+      "category_id": "cat_18_ct_chains",
+      "category_name": "18 Ct Chains",
+      "metal_type": "Gold",
+      "carats": "22k",
+      "item_wt": 5.0,
+      "net_wt": 3.0,
+      "stone_cost": 200.0,
+      "va_percent": 2.0,
+      "mc": 590.0,
+      "manual_mrp": 0.0,
+      "mrp": 65050.0,
+      "price_code": "FE0E0",
+      "breakdown_code": "B | EI0",
+      "image_url": "/uploads/aj0001.png",
+      "notes": "",
+      "created_at": "2026-08-18 13:02:15"
+    },
+    {
+      "id": "prod_msyq2w5q",
+      "code": "AJ-0004",
+      "category_id": "cat_18_ct_chains",
+      "category_name": "18 Ct Chains",
+      "metal_type": "Gold",
+      "carats": "22k",
+      "item_wt": 5.0,
+      "net_wt": 2.0,
+      "stone_cost": 300.0,
+      "va_percent": 12.0,
+      "mc": 1200.0,
+      "manual_mrp": 0.0,
+      "mrp": 48540.0,
+      "price_code": "DHED0",
+      "breakdown_code": "AB | AB00",
+      "image_url": "https://res.cloudinary.com/agc6iqec/image/upload/v1787061168/acxehfwedekassn1mfqr.jpg",
+      "notes": "",
+      "created_at": "2026-08-18 13:52:50"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat_gold_black_beads",
+      "name": "Gold Black Beads",
+      "icon_letter": "G",
+      "created_at": "2026-08-18 12:02:11"
+    },
+    {
+      "id": "cat_1_gram_gold_earrings",
+      "name": "1 Gram Gold Earrings",
+      "icon_letter": "1",
+      "created_at": "2026-08-18 12:02:11"
+    },
+    {
+      "id": "cat_18_ct_chains",
+      "name": "18 Ct Chains",
+      "icon_letter": "1",
+      "created_at": "2026-08-18 12:02:11"
+    },
+    {
+      "id": "cat_gold_mattilu",
+      "name": "Gold Mattilu",
+      "icon_letter": "G",
+      "created_at": "2026-08-18 12:02:11"
+    },
+    {
+      "id": "cat_gold_thalli_chains",
+      "name": "Gold Thalli Chains",
+      "icon_letter": "G",
+      "created_at": "2026-08-18 12:02:11"
+    },
+    {
+      "id": "cat_diamond_jewellery",
+      "name": "Diamond Jewellery",
+      "icon_letter": "D",
+      "created_at": "2026-08-18 12:02:11"
+    },
+    {
+      "id": "cat_silver_articles",
+      "name": "Silver Articles",
+      "icon_letter": "S",
+      "created_at": "2026-08-18 12:02:11"
+    }
+  ],
+  "rates": [
+    {
+      "id": "gold_22k",
+      "name": "Gold 22k",
+      "rate": 21000.0,
+      "unit": "\u20b9/g",
+      "color": "#b45309",
+      "display_order": 1
+    },
+    {
+      "id": "gold_18k",
+      "name": "Gold 18k",
+      "rate": 12100.0,
+      "unit": "\u20b9/g",
+      "color": "#d97706",
+      "display_order": 2
+    },
+    {
+      "id": "silver",
+      "name": "Silver",
+      "rate": 253.0,
+      "unit": "\u20b9/g",
+      "color": "#475569",
+      "display_order": 3
+    },
+    {
+      "id": "sterling_925",
+      "name": "Sterling (92.5)",
+      "rate": 1500.0,
+      "unit": "\u20b9/g",
+      "color": "#7c3aed",
+      "display_order": 4
+    },
+    {
+      "id": "gold_coating",
+      "name": "Gold Coating",
+      "rate": 1200.0,
+      "unit": "\u20b9/g",
+      "color": "#ea580c",
+      "display_order": 5
+    }
+  ],
+  "settings": {
+    "store_name": "Amrutha Jewellers",
+    "store_tagline": "Exquisite Collections",
+    "admin_username": "admin",
+    "admin_password": "admin123",
+    "cipher": "{\"0\":\"0\",\"1\":\"A\",\"2\":\"B\",\"3\":\"C\",\"4\":\"D\",\"5\":\"E\",\"6\":\"F\",\"7\":\"G\",\"8\":\"H\",\"9\":\"I\"}",
+    "firebase_url": "https://ajcat5-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "whatsapp_number": "919492443916",
+    "cloudinary_name": "agc6iqec",
+    "cloudinary_preset": "ajcat5"
+  }
+}
