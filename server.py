@@ -301,11 +301,18 @@ class CatalogueHTTPHandler(BaseHTTPRequestHandler):
                     sql += " AND (code LIKE ? OR category_name LIKE ? OR notes LIKE ?)"
                     wildcard = f"%{search}%"
                     params.extend([wildcard, wildcard, wildcard])
-                sql += " ORDER BY created_at DESC"
+                sql += " ORDER BY code ASC, id ASC"
                 
                 cursor.execute(sql, params)
                 products = [dict(row) for row in cursor.fetchall()]
                 conn.close()
+                
+                import re
+                def product_sort_key(p):
+                    val = (p.get('code') or p.get('id') or '').strip()
+                    return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', val)]
+                products.sort(key=product_sort_key)
+                
                 return self.send_json({"success": True, "products": products})
 
             elif path.startswith('/api/products/'):

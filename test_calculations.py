@@ -86,5 +86,22 @@ class TestJewelleryPricing(unittest.TestCase):
         self.assertEqual(mrp, 75420)
         self.assertEqual(price_code, 'GEDB0')
 
+    def test_product_ascending_sorting(self):
+        import re
+        def sort_key(p):
+            val = (p.get('code') or p.get('id') or '').strip()
+            return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', val)]
+
+        products = [
+            {'code': 'AJ-0005', 'id': 'prod_msyo9txu'},
+            {'code': 'AJ-0002', 'id': 'prod_002'},
+            {'code': 'AJ-0004', 'id': 'prod_msyq2w5q'},
+            {'code': 'AJ-0001', 'id': 'prod_001'},
+            {'code': 'AJ-0003', 'id': 'prod_003'}
+        ]
+        products.sort(key=sort_key)
+        expected = ['AJ-0001', 'AJ-0002', 'AJ-0003', 'AJ-0004', 'AJ-0005']
+        self.assertEqual([p['code'] for p in products], expected)
+
 if __name__ == '__main__':
     unittest.main()

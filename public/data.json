@@ -61,26 +61,6 @@
       "created_at": "2026-08-18 12:02:11"
     },
     {
-      "id": "prod_msyo9txu",
-      "code": "AJ-0005",
-      "category_id": "cat_18_ct_chains",
-      "category_name": "18 Ct Chains",
-      "metal_type": "Gold",
-      "carats": "22k",
-      "item_wt": 5.0,
-      "net_wt": 3.0,
-      "stone_cost": 200.0,
-      "va_percent": 2.0,
-      "mc": 590.0,
-      "manual_mrp": 0.0,
-      "mrp": 65050.0,
-      "price_code": "FE0E0",
-      "breakdown_code": "B | EI0",
-      "image_url": "/uploads/aj0001.png",
-      "notes": "",
-      "created_at": "2026-08-18 13:02:15"
-    },
-    {
       "id": "prod_msyq2w5q",
       "code": "AJ-0004",
       "category_id": "cat_18_ct_chains",
@@ -99,6 +79,26 @@
       "image_url": "https://res.cloudinary.com/agc6iqec/image/upload/v1787061168/acxehfwedekassn1mfqr.jpg",
       "notes": "",
       "created_at": "2026-08-18 13:52:50"
+    },
+    {
+      "id": "prod_msyo9txu",
+      "code": "AJ-0005",
+      "category_id": "cat_18_ct_chains",
+      "category_name": "18 Ct Chains",
+      "metal_type": "Gold",
+      "carats": "22k",
+      "item_wt": 5.0,
+      "net_wt": 3.0,
+      "stone_cost": 200.0,
+      "va_percent": 2.0,
+      "mc": 590.0,
+      "manual_mrp": 0.0,
+      "mrp": 65050.0,
+      "price_code": "FE0E0",
+      "breakdown_code": "B | EI0",
+      "image_url": "/uploads/aj0001.png",
+      "notes": "",
+      "created_at": "2026-08-18 13:02:15"
     }
   ],
   "categories": [

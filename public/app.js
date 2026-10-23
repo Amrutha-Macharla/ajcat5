@@ -77,10 +77,27 @@ const state = {
 };
 
 // ==========================================
+// PRODUCT SORTING HELPER (Ascending Order by Product ID / Code)
+// ==========================================
+function sortProductsAscending(products) {
+    if (!Array.isArray(products)) return [];
+    return [...products].sort((a, b) => {
+        const valA = (a.code || a.id || '').toString().trim();
+        const valB = (b.code || b.id || '').toString().trim();
+        const cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+        if (cmp !== 0) return cmp;
+        const idA = (a.id || '').toString().trim();
+        const idB = (b.id || '').toString().trim();
+        return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
+    });
+}
+
+// ==========================================
 // LOCAL PERSISTENCE & INITIALIZATION
 // ==========================================
 function saveStateToLocalStorage() {
     try {
+        state.products = sortProductsAscending(state.products);
         localStorage.setItem('aj_products', JSON.stringify(state.products));
         localStorage.setItem('aj_categories', JSON.stringify(state.categories));
         localStorage.setItem('aj_rates', JSON.stringify(state.rates));
@@ -109,7 +126,7 @@ async function loadInitialData() {
         const localCipher = localStorage.getItem('aj_cipher');
 
         if (localProducts) {
-            try { state.products = JSON.parse(localProducts); } catch (e) {}
+            try { state.products = sortProductsAscending(JSON.parse(localProducts)); } catch (e) {}
         }
         if (localCategories) {
             try { state.categories = JSON.parse(localCategories); } catch (e) {}
@@ -131,7 +148,7 @@ async function loadInitialData() {
 
         if (ratesRes.success && ratesRes.rates && ratesRes.rates.length > 0) state.rates = ratesRes.rates;
         if (catsRes.success && catsRes.categories && catsRes.categories.length > 0) state.categories = catsRes.categories;
-        if (prodsRes.success && prodsRes.products && prodsRes.products.length > 0) state.products = prodsRes.products;
+        if (prodsRes.success && prodsRes.products && prodsRes.products.length > 0) state.products = sortProductsAscending(prodsRes.products);
         
         if (settingsRes.success && settingsRes.settings) {
             if (settingsRes.settings.cipher) {
@@ -148,7 +165,7 @@ async function loadInitialData() {
             try {
                 const staticData = await fetch('/data.json').then(r => r.json()).catch(() => null);
                 if (staticData) {
-                    if (staticData.products && staticData.products.length > 0) state.products = staticData.products;
+                    if (staticData.products && staticData.products.length > 0) state.products = sortProductsAscending(staticData.products);
                     if (staticData.categories && staticData.categories.length > 0) state.categories = staticData.categories;
                     if (staticData.rates && staticData.rates.length > 0) state.rates = staticData.rates;
                     if (staticData.settings && staticData.settings.cipher) {
@@ -165,6 +182,8 @@ async function loadInitialData() {
         if (!state.rates || state.rates.length === 0) state.rates = [...DEFAULT_RATES];
         if (!state.categories || state.categories.length === 0) state.categories = [...DEFAULT_CATEGORIES];
         if (!state.products || state.products.length === 0) state.products = [...DEFAULT_PRODUCTS];
+
+        state.products = sortProductsAscending(state.products);
 
         // 6. Dynamically recalculate all product prices with current rates everywhere
         recalculateAllProductsInState();
@@ -199,7 +218,7 @@ async function trySyncFromFirebase() {
         }
         if (fbProds && typeof fbProds === 'object') {
             const list = Array.isArray(fbProds) ? fbProds.filter(Boolean) : Object.values(fbProds);
-            if (list.length > 0) state.products = list;
+            if (list.length > 0) state.products = sortProductsAscending(list);
         }
         if (fbSettings && typeof fbSettings === 'object') {
             if (fbSettings.cipher) {
@@ -586,7 +605,7 @@ function renderCategoryShowcase() {
     recalculateAllProductsInState();
 
     document.getElementById('category-showcase-title').textContent = state.activeCategory.name;
-    const catProducts = state.products.filter(p => p.category_id === state.activeCategory.id);
+    const catProducts = sortProductsAscending(state.products.filter(p => p.category_id === state.activeCategory.id));
     document.getElementById('category-showcase-subtitle').textContent = `${catProducts.length} Handcrafted Designs`;
 
     const container = document.getElementById('single-product-showcase-container');
@@ -1130,11 +1149,11 @@ function renderAdminProductsTable() {
     const search = (document.getElementById('admin-product-search')?.value || '').trim().toLowerCase();
     const catFilter = document.getElementById('admin-category-filter')?.value || '';
 
-    const filtered = state.products.filter(p => {
+    const filtered = sortProductsAscending(state.products.filter(p => {
         const matchSearch = !search || p.code.toLowerCase().includes(search) || (p.notes && p.notes.toLowerCase().includes(search));
         const matchCat = !catFilter || p.category_id === catFilter;
         return matchSearch && matchCat;
-    });
+    }));
 
     if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="13" class="text-center py-10 text-sm text-slate-400 font-medium">No products found matching filters</td></tr>`;
@@ -1436,8 +1455,9 @@ async function handleSaveProduct(e) {
     if (existingIdx >= 0) {
         state.products[existingIdx] = payload;
     } else {
-        state.products.unshift(payload);
+        state.products.push(payload);
     }
+    state.products = sortProductsAscending(state.products);
 
     // Save to local server
     try {
@@ -1701,6 +1721,7 @@ async function handleSaveCloudSettings(e) {
 // BACKUP & RESTORE
 // ==========================================
 function exportCatalogueBackup() {
+    state.products = sortProductsAscending(state.products);
     const backupData = {
         exportedAt: new Date().toISOString(),
         products: state.products,
@@ -1734,7 +1755,7 @@ function importCatalogueBackup(e) {
     reader.onload = async (evt) => {
         try {
             const data = JSON.parse(evt.target.result);
-            if (data.products && Array.isArray(data.products)) state.products = data.products;
+            if (data.products && Array.isArray(data.products)) state.products = sortProductsAscending(data.products);
             if (data.categories && Array.isArray(data.categories)) state.categories = data.categories;
             if (data.rates && Array.isArray(data.rates)) state.rates = data.rates;
             if (data.cipher) state.cipher = typeof data.cipher === 'string' ? JSON.parse(data.cipher) : data.cipher;
