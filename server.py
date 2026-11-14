@@ -163,6 +163,38 @@ def init_db():
     conn.commit()
     conn.close()
 
+def optimize_cloudinary_url(url):
+    """
+    Cloudinary image optimization helper.
+    Ensures f_auto, q_auto, and w_1200,c_limit are included in Cloudinary image URLs.
+    Also corrects any typos like p_auto -> q_auto.
+    """
+    if not url or not isinstance(url, str):
+        return url
+    if 'cloudinary.com' in url and '/upload/' in url:
+        import re
+        clean = re.sub(r'\bp_auto\b', 'q_auto', url)
+        upload_idx = clean.find('/upload/')
+        if upload_idx == -1:
+            return clean
+        before = clean[:upload_idx + 8]
+        after = clean[upload_idx + 8:]
+        
+        parts = after.split('/', 1)
+        if len(parts) == 2:
+            first_seg = parts[0]
+            if not re.match(r'^v\d+$', first_seg) and ('_' in first_seg or ',' in first_seg):
+                params = [p for p in first_seg.split(',') if p]
+                if not any(p.startswith('f_') for p in params):
+                    params.insert(0, 'f_auto')
+                if not any(p.startswith('q_') for p in params):
+                    params.append('q_auto')
+                if not any(p.startswith('w_') or p.startswith('c_') for p in params):
+                    params.extend(['w_1200', 'c_limit'])
+                return f"{before}{','.join(params)}/{parts[1]}"
+        return f"{before}f_auto,q_auto,w_1200,c_limit/{after}"
+    return url
+
 def encode_codeword(num_val, cipher=None):
     if cipher is None:
         cipher = DEFAULT_CIPHER
@@ -307,6 +339,9 @@ class CatalogueHTTPHandler(BaseHTTPRequestHandler):
                 products = [dict(row) for row in cursor.fetchall()]
                 conn.close()
                 
+                for p in products:
+                    p['image_url'] = optimize_cloudinary_url(p.get('image_url'))
+                
                 import re
                 def product_sort_key(p):
                     val = (p.get('code') or p.get('id') or '').strip()
@@ -321,7 +356,9 @@ class CatalogueHTTPHandler(BaseHTTPRequestHandler):
                 prod = cursor.fetchone()
                 conn.close()
                 if prod:
-                    return self.send_json({"success": True, "product": dict(prod)})
+                    prod_dict = dict(prod)
+                    prod_dict['image_url'] = optimize_cloudinary_url(prod_dict.get('image_url'))
+                    return self.send_json({"success": True, "product": prod_dict})
                 return self.send_json({"success": False, "error": "Product not found"}, 404)
 
             elif path == '/api/settings':
@@ -460,6 +497,8 @@ class CatalogueHTTPHandler(BaseHTTPRequestHandler):
             cursor.execute("SELECT id FROM products WHERE id = ?", (prod_id,))
             exists = cursor.fetchone()
             
+            clean_img = optimize_cloudinary_url(body.get('image_url', ''))
+            
             if exists:
                 cursor.execute("""
                 UPDATE products SET
@@ -472,7 +511,7 @@ class CatalogueHTTPHandler(BaseHTTPRequestHandler):
                     code, cat_id, cat_name, body.get('metal_type', 'Gold'), body.get('carats', '22k'),
                     float(body.get('item_wt') or 0), float(body.get('net_wt') or 0), float(body.get('stone_cost') or 0),
                     float(body.get('va_percent') or 0), float(body.get('mc') or 0), float(body.get('manual_mrp') or 0),
-                    mrp, price_code, breakdown_code, body.get('image_url', ''), body.get('notes', ''),
+                    mrp, price_code, breakdown_code, clean_img, body.get('notes', ''),
                     prod_id
                 ))
             else:
@@ -486,7 +525,7 @@ class CatalogueHTTPHandler(BaseHTTPRequestHandler):
                     prod_id, code, cat_id, cat_name, body.get('metal_type', 'Gold'), body.get('carats', '22k'),
                     float(body.get('item_wt') or 0), float(body.get('net_wt') or 0), float(body.get('stone_cost') or 0),
                     float(body.get('va_percent') or 0), float(body.get('mc') or 0), float(body.get('manual_mrp') or 0),
-                    mrp, price_code, breakdown_code, body.get('image_url', ''), body.get('notes', '')
+                    mrp, price_code, breakdown_code, clean_img, body.get('notes', '')
                 ))
 
             conn.commit()

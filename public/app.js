@@ -50,7 +50,7 @@ const DEFAULT_PRODUCTS = [
     {
         id: 'prod_msyq2w5q', code: 'AJ-0004', category_id: 'cat_18_ct_chains', category_name: '18 Ct Chains',
         metal_type: 'Gold', carats: '22k', item_wt: 5.0, net_wt: 2.0, stone_cost: 300, va_percent: 12, mc: 1200, manual_mrp: 0,
-        mrp: 48540, price_code: 'DHED0', breakdown_code: 'AB | AB00', image_url: 'https://res.cloudinary.com/agc6iqec/image/upload/v1787061168/acxehfwedekassn1mfqr.jpg', notes: ''
+        mrp: 48540, price_code: 'DHED0', breakdown_code: 'AB | AB00', image_url: 'https://res.cloudinary.com/agc6iqec/image/upload/f_auto,q_auto,w_1200,c_limit/v1787061168/acxehfwedekassn1mfqr.jpg', notes: ''
     },
     {
         id: 'prod_msyo9txu', code: 'AJ-0005', category_id: 'cat_18_ct_chains', category_name: '18 Ct Chains',
@@ -309,14 +309,137 @@ function populateCloudInputs() {
 }
 
 // ==========================================
-// IMAGE OPTIMIZATION HELPER (Cloudinary f_auto,q_auto)
+// IMAGE COMPRESSION & CLOUDINARY OPTIMIZATION (f_auto, q_auto)
 // ==========================================
+/**
+ * Compresses an image file client-side using an off-screen HTML5 Canvas.
+ * Automatically downscales large phone/camera images (e.g. 4032x3024) to a maximum dimension
+ * of 1200px while preserving aspect ratio, and encodes to WebP/JPEG at ~0.82 quality.
+ * Reduces storage required in Cloudinary from 5-12 MB down to ~100-250 KB (95-98% savings).
+ */
+async function compressImageForUpload(file, options = {}) {
+    if (!file || !file.type || !file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+        return file;
+    }
+
+    const maxDim = options.maxDimension || 1200;
+    const quality = options.quality !== undefined ? options.quality : 0.82;
+
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    let { width, height } = img;
+                    if (!width || !height) {
+                        resolve(file);
+                        return;
+                    }
+
+                    // Downscale if either dimension exceeds maxDim
+                    if (width > maxDim || height > maxDim) {
+                        if (width > height) {
+                            height = Math.round((height * maxDim) / width);
+                            width = maxDim;
+                        } else {
+                            width = Math.round((width * maxDim) / height);
+                            height = maxDim;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        resolve(file);
+                        return;
+                    }
+
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const handleBlob = (blob, extension, mimeType) => {
+                        if (!blob) {
+                            resolve(file);
+                            return;
+                        }
+                        // Use compressed blob if it reduced file size (or was resized)
+                        if (blob.size < file.size || width !== img.width || height !== img.height) {
+                            const baseName = (file.name || 'image').replace(/\.[^.]+$/, '');
+                            const compressedFile = new File([blob], `${baseName}.${extension}`, {
+                                type: mimeType,
+                                lastModified: Date.now()
+                            });
+                            compressedFile.originalSize = file.size;
+                            compressedFile.compressedSize = blob.size;
+                            resolve(compressedFile);
+                        } else {
+                            resolve(file);
+                        }
+                    };
+
+                    // Try WebP first (modern, highly efficient)
+                    canvas.toBlob((webpBlob) => {
+                        if (webpBlob && webpBlob.type === 'image/webp') {
+                            handleBlob(webpBlob, 'webp', 'image/webp');
+                        } else {
+                            // Fallback to JPEG if WebP not supported
+                            canvas.toBlob((jpegBlob) => {
+                                handleBlob(jpegBlob, 'jpg', 'image/jpeg');
+                            }, 'image/jpeg', quality);
+                        }
+                    }, 'image/webp', quality);
+
+                } catch (err) {
+                    console.warn("Canvas compression error, using original:", err);
+                    resolve(file);
+                }
+            };
+            img.onerror = () => resolve(file);
+            img.src = e.target.result;
+        };
+        reader.onerror = () => resolve(file);
+        reader.readAsDataURL(file);
+    });
+}
+
+/**
+ * Cloudinary URL transformation helper.
+ * Ensures f_auto (format auto), q_auto (quality auto), and w_1200,c_limit (responsive size limit)
+ * are applied to Cloudinary URLs.
+ * Also corrects any typos like 'p_auto' to 'q_auto'.
+ */
 function getOptimizedImageUrl(url) {
-    if (!url) return '';
+    if (!url || typeof url !== 'string') return '';
     if (url.includes('cloudinary.com') && url.includes('/upload/')) {
-        if (!url.includes('/upload/f_auto,q_auto/')) {
-            return url.replace('/upload/', '/upload/f_auto,q_auto/');
+        // Fix any accidental p_auto typos to q_auto
+        let clean = url.replace(/\bp_auto\b/g, 'q_auto');
+        
+        const uploadIdx = clean.indexOf('/upload/');
+        if (uploadIdx === -1) return clean;
+        
+        const beforeUpload = clean.slice(0, uploadIdx + 8);
+        let afterUpload = clean.slice(uploadIdx + 8);
+        
+        const firstSlashIdx = afterUpload.indexOf('/');
+        if (firstSlashIdx !== -1) {
+            const firstSegment = afterUpload.slice(0, firstSlashIdx);
+            // Check if first segment is an existing transformation (not a version like v123456)
+            if (!/^v\d+$/.test(firstSegment) && (firstSegment.includes('_') || firstSegment.includes(','))) {
+                let params = firstSegment.split(',').filter(Boolean);
+                if (!params.some(p => p.startsWith('f_'))) params.unshift('f_auto');
+                if (!params.some(p => p.startsWith('q_'))) params.push('q_auto');
+                if (!params.some(p => p.startsWith('w_') || p.startsWith('c_'))) {
+                    params.push('w_1200', 'c_limit');
+                }
+                return beforeUpload + params.join(',') + '/' + afterUpload.slice(firstSlashIdx + 1);
+            }
         }
+        
+        return beforeUpload + 'f_auto,q_auto,w_1200,c_limit/' + afterUpload;
     }
     return url;
 }
@@ -1242,6 +1365,11 @@ function openAddProductModal() {
     document.getElementById('prod-image-url').value = "";
     const fileInp = document.getElementById('prod-file-input');
     if (fileInp) fileInp.value = "";
+    const statusEl = document.getElementById('image-upload-status');
+    if (statusEl) {
+        statusEl.className = 'hidden';
+        statusEl.innerHTML = '';
+    }
     updateImagePreview("");
 
     onMetalTypeChange();
@@ -1267,6 +1395,13 @@ function openEditProductModal(prodId) {
     document.getElementById('prod-mc').value = p.mc || '';
     document.getElementById('prod-manual-mrp').value = p.manual_mrp || '';
     document.getElementById('prod-image-url').value = p.image_url || '';
+    const statusEl = document.getElementById('image-upload-status');
+    if (statusEl) {
+        statusEl.className = 'hidden';
+        statusEl.innerHTML = '';
+    }
+    const fileInp = document.getElementById('prod-file-input');
+    if (fileInp) fileInp.value = "";
 
     updateImagePreview(p.image_url);
     onMetalTypeChange();
@@ -1353,7 +1488,7 @@ function updateImagePreview(url) {
     const imgEl = document.getElementById('prod-img-preview');
     const placeholder = document.getElementById('prod-img-placeholder');
     if (url) {
-        imgEl.src = url;
+        imgEl.src = getOptimizedImageUrl(url);
         imgEl.classList.remove('hidden');
         placeholder.classList.add('hidden');
     } else {
@@ -1367,11 +1502,58 @@ async function handleImageFileSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
 
+    const statusEl = document.getElementById('image-upload-status');
+    const setStatus = (msg, type = 'info') => {
+        if (!statusEl) return;
+        statusEl.className = 'text-xs font-semibold py-1.5 px-3 rounded-xl border transition-all';
+        if (type === 'loading') {
+            statusEl.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-700');
+            statusEl.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <svg class="animate-spin h-3.5 w-3.5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    <span>${msg}</span>
+                </div>`;
+        } else if (type === 'success') {
+            statusEl.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-800');
+            statusEl.innerHTML = `<div class="flex items-center gap-1.5"><i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-600"></i><span>${msg}</span></div>`;
+            if (window.lucide) lucide.createIcons();
+        } else if (type === 'error') {
+            statusEl.classList.add('bg-rose-50', 'border-rose-200', 'text-rose-700');
+            statusEl.innerHTML = `<span>⚠️ ${msg}</span>`;
+        }
+        statusEl.classList.remove('hidden');
+    };
+
+    setStatus('Compressing photo client-side to minimize Cloudinary storage...', 'loading');
+
+    let uploadFile = file;
+    let originalSize = file.size;
+    let compressedSize = file.size;
+
+    try {
+        const compressed = await compressImageForUpload(file, { maxDimension: 1200, quality: 0.82 });
+        uploadFile = compressed;
+        originalSize = compressed.originalSize || file.size;
+        compressedSize = compressed.size;
+    } catch (cErr) {
+        console.warn("Client-side compression fallback:", cErr);
+    }
+
+    const origKb = Math.round(originalSize / 1024);
+    const compKb = Math.round(compressedSize / 1024);
+    const savedPct = originalSize > 0 ? Math.round(((originalSize - compressedSize) / originalSize) * 100) : 0;
+    const compressionSummary = savedPct > 0 ? `${origKb}KB → ${compKb}KB (-${savedPct}%)` : `${compKb}KB`;
+
+    setStatus(`Uploading ${compressionSummary} to Cloudinary...`, 'loading');
+
     // Check Cloudinary direct upload
     if (state.cloudinaryName && state.cloudinaryPreset) {
         try {
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', uploadFile);
             formData.append('upload_preset', state.cloudinaryPreset);
             if (state.cloudinaryKey) formData.append('api_key', state.cloudinaryKey);
 
@@ -1380,15 +1562,21 @@ async function handleImageFileSelect(e) {
             const clData = await clRes.json();
             
             if (clData.secure_url) {
-                document.getElementById('prod-image-url').value = clData.secure_url;
-                updateImagePreview(clData.secure_url);
+                const optimizedUrl = getOptimizedImageUrl(clData.secure_url);
+                document.getElementById('prod-image-url').value = optimizedUrl;
+                updateImagePreview(optimizedUrl);
+                setStatus(`⚡ Saved ${savedPct}% Cloudinary storage (${compressionSummary}) with f_auto,q_auto`, 'success');
                 return;
+            } else if (clData.error) {
+                console.warn("Cloudinary error:", clData.error.message);
             }
         } catch (err) {
             console.warn("Cloudinary direct upload fallback:", err);
         }
     }
 
+    // Fallback to local server or base64
+    setStatus(`Saving image (${compressionSummary})...`, 'loading');
     const reader = new FileReader();
     reader.onload = async (event) => {
         const base64Data = event.target.result;
@@ -1399,19 +1587,24 @@ async function handleImageFileSelect(e) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    filename: `product_${Date.now()}_${file.name}`,
+                    filename: `product_${Date.now()}_${uploadFile.name || file.name}`,
                     image_data: base64Data
                 })
             });
             const data = await res.json();
             if (data.success) {
                 document.getElementById('prod-image-url').value = data.url;
+                setStatus(`Compressed ${compressionSummary} & saved locally`, 'success');
+            } else {
+                document.getElementById('prod-image-url').value = base64Data;
+                setStatus(`Compressed ${compressionSummary} (preview ready)`, 'success');
             }
         } catch (err) {
             document.getElementById('prod-image-url').value = base64Data;
+            setStatus(`Compressed ${compressionSummary} (preview ready)`, 'success');
         }
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(uploadFile);
 }
 
 async function handleSaveProduct(e) {
@@ -1428,7 +1621,8 @@ async function handleSaveProduct(e) {
     const va_percent = document.getElementById('prod-va').value;
     const mc = document.getElementById('prod-mc').value;
     const manual_mrp = document.getElementById('prod-manual-mrp').value;
-    const image_url = document.getElementById('prod-image-url').value || '';
+    const raw_image_url = document.getElementById('prod-image-url').value || '';
+    const image_url = getOptimizedImageUrl(raw_image_url);
 
     const catObj = state.categories.find(c => c.id === category_id);
     const category_name = catObj ? catObj.name : 'General';

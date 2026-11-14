@@ -3,7 +3,7 @@
 Unit tests for Amrutha Jewellers Calculation & Codeword Cipher Engine
 """
 import unittest
-from server import calculate_product_pricing, encode_codeword, DEFAULT_CIPHER
+from server import calculate_product_pricing, encode_codeword, DEFAULT_CIPHER, optimize_cloudinary_url
 
 class TestJewelleryPricing(unittest.TestCase):
     def setUp(self):
@@ -102,6 +102,26 @@ class TestJewelleryPricing(unittest.TestCase):
         products.sort(key=sort_key)
         expected = ['AJ-0001', 'AJ-0002', 'AJ-0003', 'AJ-0004', 'AJ-0005']
         self.assertEqual([p['code'] for p in products], expected)
+
+    def test_cloudinary_image_optimization(self):
+        # 1. Plain Cloudinary URL should gain f_auto,q_auto,w_1200,c_limit
+        url1 = "https://res.cloudinary.com/agc6iqec/image/upload/v1787061168/acxehfwedekassn1mfqr.jpg"
+        opt1 = optimize_cloudinary_url(url1)
+        self.assertEqual(opt1, "https://res.cloudinary.com/agc6iqec/image/upload/f_auto,q_auto,w_1200,c_limit/v1787061168/acxehfwedekassn1mfqr.jpg")
+
+        # 2. Idempotent: repeated calls should not duplicate transformations
+        opt2 = optimize_cloudinary_url(opt1)
+        self.assertEqual(opt1, opt2)
+
+        # 3. Corrects p_auto typo to q_auto
+        url_typo = "https://res.cloudinary.com/demo/image/upload/f_auto,p_auto/v12345/sample.jpg"
+        opt3 = optimize_cloudinary_url(url_typo)
+        self.assertIn("q_auto", opt3)
+        self.assertNotIn("p_auto", opt3)
+
+        # 4. Non-cloudinary URLs should remain unchanged
+        local_url = "/uploads/aj0001.png"
+        self.assertEqual(optimize_cloudinary_url(local_url), local_url)
 
 if __name__ == '__main__':
     unittest.main()
